@@ -1,0 +1,12 @@
+build/
+.cmake/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+
+.vscode/
+
+.qtcreator/
+*.cmake.user
+CMakeLists.txt.user*
