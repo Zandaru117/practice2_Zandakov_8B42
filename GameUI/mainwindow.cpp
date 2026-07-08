@@ -1,122 +1,65 @@
 #include "mainwindow.h"
-#include <QVBoxLayout>
-#include <QHBoxLayout>
+#include "ui_mainwindow.h"
 #include <QMessageBox>
 
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) {
-    stackedWidget = new QStackedWidget(this);
-    setCentralWidget(stackedWidget);
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
 
-    //Создаем экраны
-    createMenuScreen();
-    createGameScreen();
-    createSettingsScreen();
+    ui->comboDifficulty->addItem("Легкий", static_cast<int>(Difficulty::Easy));
+    ui->comboDifficulty->addItem("Средний", static_cast<int>(Difficulty::Medium));
+    ui->comboDifficulty->addItem("Сложный", static_cast<int>(Difficulty::Hard));
 
-    stackedWidget->addWidget(menuWidget);
-    stackedWidget->addWidget(gameWidget);
-    stackedWidget->addWidget(settingsWidget);
+    setupGridConnections();
 
-    //Стартуем с главного меню
-    stackedWidget->setCurrentIndex(0);
-    resize(400, 450);
+    connect(ui->btnBackGame, &QPushButton::clicked, this, &MainWindow::onBackToMenuClicked);
+    connect(ui->btnBackSettings, &QPushButton::clicked, this, &MainWindow::onBackToMenuClicked);
+    connect(ui->comboDifficulty, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::onDifficultyChanged);
+
+    ui->stackedWidget->setCurrentIndex(0);
 }
 
-void MainWindow::createMenuScreen() {
-    menuWidget = new QWidget();
-    QVBoxLayout *layout = new QVBoxLayout(menuWidget);
-
-    QLabel *title = new QLabel("Крестики-Нолики", menuWidget);
-    title->setAlignment(Qt::AlignCenter);
-    title->setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;");
-    layout->addWidget(title);
-
-    QPushButton *btnSingle = new QPushButton("Игра против компьютера", menuWidget);
-    QPushButton *btnOnline = new QPushButton("Онлайн игра (В разработке)", menuWidget);
-    QPushButton *btnSettings = new QPushButton("Настройки", menuWidget);
-    QPushButton *btnExit = new QPushButton("Выход", menuWidget);
-
-    layout->addWidget(btnSingle);
-    layout->addWidget(btnOnline);
-    layout->addWidget(btnSettings);
-    layout->addWidget(btnExit);
-
-    connect(btnSingle, &QPushButton::clicked, this, &MainWindow::onMenuSingleplayerClicked);
-    connect(btnOnline, &QPushButton::clicked, this, &MainWindow::onMenuMultiplayerClicked);
-    connect(btnSettings, &QPushButton::clicked, this, &MainWindow::onMenuSettingsClicked);
-    connect(btnExit, &QPushButton::clicked, this, &MainWindow::close);
+MainWindow::~MainWindow() {
+    delete ui;
 }
 
-void MainWindow::createGameScreen() {
-    gameWidget = new QWidget();
-    QVBoxLayout *mainLayout = new QVBoxLayout(gameWidget);
-
-    statusLabel = new QLabel("Ход Крестиков (X)", gameWidget);
-    statusLabel->setAlignment(Qt::AlignCenter);
-    mainLayout->addWidget(statusLabel);
-
-    QGridLayout *gridLayout = new QGridLayout();
+void MainWindow::setupGridConnections() {
     for (int r = 0; r < 3; ++r) {
         for (int c = 0; c < 3; ++c) {
-            gridButtons[r][c] = new QPushButton(gameWidget);
-            gridButtons[r][c]->setFixedSize(80, 80);
-            gridButtons[r][c]->setStyleSheet("font-size: 24px; font-weight: bold;");
+            QString btnName = QString("button_%1_%2").arg(r).arg(c);
+            QPushButton *btn = this->findChild<QPushButton*>(btnName);
 
-            gridButtons[r][c]->setProperty("row", r);
-            gridButtons[r][c]->setProperty("col", c);
-
-            gridLayout->addWidget(gridButtons[r][c], r, c);
-            connect(gridButtons[r][c], &QPushButton::clicked, this, &MainWindow::onGridButtonClicked);
+            if (btn) {
+                btn->setProperty("row", r);
+                btn->setProperty("col", c);
+                connect(btn, &QPushButton::clicked, this, &MainWindow::onGridButtonClicked);
+            }
         }
     }
-    mainLayout->addLayout(gridLayout);
-
-    QPushButton *btnBack = new QPushButton("В главное меню", gameWidget);
-    connect(btnBack, &QPushButton::clicked, this, &MainWindow::onBackToMenuClicked);
-    mainLayout->addWidget(btnBack);
 }
 
-void MainWindow::createSettingsScreen() {
-    settingsWidget = new QWidget();
-    QVBoxLayout *layout = new QVBoxLayout(settingsWidget);
-
-    QLabel *label = new QLabel("Сложность компьютера:", settingsWidget);
-    QComboBox *combo = new QComboBox(settingsWidget);
-    combo->addItem("Легкий", static_cast<int>(Difficulty::Easy));
-    combo->addItem("Средний", static_cast<int>(Difficulty::Medium));
-    combo->addItem("Сложный", static_cast<int>(Difficulty::Hard));
-
-    layout->addWidget(label);
-    layout->addWidget(combo);
-
-    QPushButton *btnBack = new QPushButton("Назад", settingsWidget);
-    layout->addWidget(btnBack);
-
-    connect(combo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::onDifficultyChanged);
-    connect(btnBack, &QPushButton::clicked, this, &MainWindow::onBackToMenuClicked);
-}
-
-
-void MainWindow::onMenuSingleplayerClicked() {
+void MainWindow::on_btnSingleplayer_clicked() {
     game.reset();
     updateUI();
-    stackedWidget->setCurrentIndex(1);
+    ui->stackedWidget->setCurrentIndex(1);
 }
 
-void MainWindow::onMenuMultiplayerClicked() {
-    QMessageBox::information(this, "Онлайн", "Сетевой режим появится в следующих обновлениях!");
+void MainWindow::on_btnMultiplayer_clicked() {
+    QMessageBox::information(this, "Онлайн", "Сетевой режим в разработке!");
 }
 
-void MainWindow::onMenuSettingsClicked() {
-    stackedWidget->setCurrentIndex(2);
+void MainWindow::on_btnSettings_clicked() {
+    ui->stackedWidget->setCurrentIndex(2);
 }
 
 void MainWindow::onBackToMenuClicked() {
-    stackedWidget->setCurrentIndex(0);
+    ui->stackedWidget->setCurrentIndex(0);
 }
 
 void MainWindow::onDifficultyChanged(int index) {
-    Difficulty diff = static_cast<Difficulty>(index);
-    game.setDifficulty(diff);
+    game.setDifficulty(static_cast<Difficulty>(index));
 }
 
 void MainWindow::onGridButtonClicked() {
@@ -128,7 +71,6 @@ void MainWindow::onGridButtonClicked() {
 
     if (game.makeMove(row, col)) {
         updateUI();
-
         if (game.getState() == GameState::Progress) {
             game.makeBotMove();
             updateUI();
@@ -137,34 +79,32 @@ void MainWindow::onGridButtonClicked() {
 }
 
 void MainWindow::updateUI() {
+
     for (int r = 0; r < 3; ++r) {
         for (int c = 0; c < 3; ++c) {
-            Cell cell = game.getCell(r, c);
-            if (cell == Cell::X) gridButtons[r][c]->setText("X");
-            else if (cell == Cell::O) gridButtons[r][c]->setText("O");
-            else gridButtons[r][c]->setText("");
+            QString btnName = QString("button_%1_%2").arg(r).arg(c);
+            QPushButton *btn = this->findChild<QPushButton*>(btnName);
+            if (btn) {
+                Cell cell = game.getCell(r, c);
+                if (cell == Cell::X) btn->setText("X");
+                else if (cell == Cell::O) btn->setText("O");
+                else btn->setText("");
+            }
         }
     }
 
-    //Обработка состояний игры
     GameState state = game.getState();
     if (state == GameState::Progress) {
         if (game.getCurrentPlayer() == Cell::X) {
-            statusLabel->setText("Ваш ход (X)");
+            ui->statusLabel->setText("Ваш ход (X)");
         } else {
-            statusLabel->setText("Ход компьютера (O)");
+            ui->statusLabel->setText("Ход компьютера (O)");
         }
     } else {
-        if (state == GameState::WinX) {
-            statusLabel->setText("Вы победили! (X)");
-            QMessageBox::information(this, "Финал", "Поздравляем! Вы выиграли.");
-        } else if (state == GameState::WinO) {
-            statusLabel->setText("Победил компьютер! (O)");
-            QMessageBox::critical(this, "Финал", "Компьютер выиграл. Попробуйте еще раз!");
-        } else if (state == GameState::Draw) {
-            statusLabel->setText("Ничья!");
-            QMessageBox::information(this, "Финал", "Ничья!");
-        }
+        if (state == GameState::WinX) QMessageBox::information(this, "Финал", "Вы выиграли!");
+        else if (state == GameState::WinO) QMessageBox::critical(this, "Финал", "Компьютер выиграл!");
+        else if (state == GameState::Draw) QMessageBox::information(this, "Финал", "Ничья!");
+
         onBackToMenuClicked();
     }
 }

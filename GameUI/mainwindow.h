@@ -1,42 +1,32 @@
 #pragma once
 
 #include <QMainWindow>
-#include <QStackedWidget>
-#include <QPushButton>
-#include <QLabel>
-#include <QGridLayout>
-#include <QComboBox>
 #include "../GameCore/game_logic.h"
+
+QT_BEGIN_NAMESPACE
+namespace Ui { class MainWindow; }
+QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
     MainWindow(QWidget *parent = nullptr);
-    ~MainWindow() = default;
+    ~MainWindow();
 
 private slots:
-    void onMenuSingleplayerClicked();
-    void onMenuMultiplayerClicked();
-    void onMenuSettingsClicked();
+    void on_btnSingleplayer_clicked();
+    void on_btnMultiplayer_clicked();
+    void on_btnSettings_clicked();
+
     void onGridButtonClicked();
     void onBackToMenuClicked();
     void onDifficultyChanged(int index);
 
 private:
+    Ui::MainWindow *ui;
     TicTacToe game;
 
-    QStackedWidget *stackedWidget;
-
-    QWidget *menuWidget;
-    QWidget *gameWidget;
-    QWidget *settingsWidget;
-
-    QPushButton *gridButtons[3][3];
-    QLabel *statusLabel;
-
-    void createMenuScreen();
-    void createGameScreen();
-    void createSettingsScreen();
+    void setupGridConnections();
     void updateUI();
 };

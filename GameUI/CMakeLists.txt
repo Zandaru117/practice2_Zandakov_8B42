@@ -8,5 +8,6 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
 add_executable(GameUI main.cpp
-    mainwindow.h mainwindow.cpp)
+    mainwindow.h mainwindow.cpp mainwindow.ui
+    mainwindow.h mainwindow.cpp mainwindow.ui)
 target_link_libraries(GameUI PRIVATE Qt6::Widgets GameCore)
