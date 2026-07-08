@@ -108,3 +108,7 @@ void MainWindow::updateUI() {
         onBackToMenuClicked();
     }
 }
+
+void MainWindow::on_btnExit_clicked() {
+    this->close();
+}

@@ -18,6 +18,7 @@ private slots:
     void on_btnSingleplayer_clicked();
     void on_btnMultiplayer_clicked();
     void on_btnSettings_clicked();
+    void on_btnExit_clicked();
 
     void onGridButtonClicked();
     void onBackToMenuClicked();
