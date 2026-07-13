@@ -141,10 +141,7 @@ int TicTacToe::minimax(bool isMax) {
         return evaluateBoard();
     }
 
-    Cell backupPlayer = currentPlayer;
-
     if (isMax) {
-
         int bestScore = -1000;
         for (int i = 0; i < 3; ++i) {
             for (int j = 0; j < 3; ++j) {
@@ -157,16 +154,16 @@ int TicTacToe::minimax(bool isMax) {
 
                     board[i][j] = Cell::Empty;
                     state = GameState::Progress;
-                    currentPlayer = backupPlayer;
                 }
             }
-        } return bestScore;
+        }
+        return bestScore;
     } else {
         int bestScore = 1000;
         for (int i = 0; i < 3; ++i) {
             for (int j = 0; j < 3; ++j) {
                 if (board[i][j] == Cell::Empty) {
-                    board[i][j] == Cell::O;
+                    board[i][j] = Cell::O;
                     checkGameState();
 
                     int score = minimax(true);
@@ -174,10 +171,10 @@ int TicTacToe::minimax(bool isMax) {
 
                     board[i][j] = Cell::Empty;
                     state = GameState::Progress;
-                    currentPlayer = backupPlayer;
                 }
             }
-        } return bestScore;
+        }
+        return bestScore;
     }
 }
 
@@ -206,17 +203,19 @@ void TicTacToe::makeBotMove() {
         int bestRow = -1;
         int bestCol = -1;
 
+        Cell realPlayer = currentPlayer; 
+
         for (int i = 0; i < 3; ++i) {
             for (int j = 0; j < 3; ++j) {
                 if (board[i][j] == Cell::Empty) {
-                    board[i][j] == Cell::O;
+                    
+                    board[i][j] = Cell::O;
                     checkGameState();
 
-                    int score = minimax(true);
+                    int score = minimax(true); 
 
                     board[i][j] = Cell::Empty;
                     state = GameState::Progress;
-                    currentPlayer = Cell::O;
 
                     if (score < bestScore) {
                         bestScore = score;
@@ -226,6 +225,8 @@ void TicTacToe::makeBotMove() {
                 }
             }
         }
+
+        currentPlayer = realPlayer; 
 
         if (bestRow != -1 && bestCol != -1) {
             makeMove(bestRow, bestCol);
