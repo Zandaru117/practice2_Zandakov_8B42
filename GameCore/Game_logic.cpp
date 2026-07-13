@@ -130,6 +130,57 @@ bool TicTacToe::tryWinOrBlock(Cell targetCell) {
     return false;
 }
 
+int TicTacToe::evaluateBoard() const {
+    if (state == GameState::WinX) return 10;
+    if (state == GameState::WinO) return -10;
+    return 0;
+}
+
+int TicTacToe::minimax(bool isMax) {
+    if (state != GameState::Progress) {
+        return evaluateBoard();
+    }
+
+    Cell backupPlayer = currentPlayer;
+
+    if (isMax) {
+
+        int bestScore = -1000;
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                if (board[i][j] == Cell::Empty) {
+                    board[i][j] = Cell::X;
+                    checkGameState();
+
+                    int score = minimax(false);
+                    bestScore = std::max(bestScore, score);
+
+                    board[i][j] = Cell::Empty;
+                    state = GameState::Progress;
+                    currentPlayer = backupPlayer;
+                }
+            }
+        } return bestScore;
+    } else {
+        int bestScore = 1000;
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                if (board[i][j] == Cell::Empty) {
+                    board[i][j] == Cell::O;
+                    checkGameState();
+
+                    int score = minimax(true);
+                    bestScore = std::min(bestScore, score);
+
+                    board[i][j] = Cell::Empty;
+                    state = GameState::Progress;
+                    currentPlayer = backupPlayer;
+                }
+            }
+        } return bestScore;
+    }
+}
+
 void TicTacToe::makeBotMove() {
     if (state != GameState::Progress) return;
 
@@ -151,13 +202,33 @@ void TicTacToe::makeBotMove() {
     }
 
     if (difficulty == Difficulty::Hard) {
+        int bestScore = 1000;
+        int bestRow = -1;
+        int bestCol = -1;
+
         for (int i = 0; i < 3; ++i) {
             for (int j = 0; j < 3; ++j) {
                 if (board[i][j] == Cell::Empty) {
-                    makeMove(i, j);
-                    return;
+                    board[i][j] == Cell::O;
+                    checkGameState();
+
+                    int score = minimax(true);
+
+                    board[i][j] = Cell::Empty;
+                    state = GameState::Progress;
+                    currentPlayer = Cell::O;
+
+                    if (score < bestScore) {
+                        bestScore = score;
+                        bestRow = i;
+                        bestCol = j;
+                    }
                 }
             }
+        }
+
+        if (bestRow != -1 && bestCol != -1) {
+            makeMove(bestRow, bestCol);
         }
     }
 }
