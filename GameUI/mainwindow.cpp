@@ -8,6 +8,15 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    this->setMinimumSize(600, 400);
+
+    this->resize(800, 600);
+
+    connect(ui->btnSingleplayer, &QPushButton::clicked, this, &MainWindow::on_btnSingleplayer_clicked);
+    connect(ui->btnMultiplayer, &QPushButton::clicked, this, &MainWindow::on_btnMultiplayer_clicked);
+    connect(ui->btnSettings, &QPushButton::clicked, this, &MainWindow::on_btnSettings_clicked);
+    connect(ui->btnExit, &QPushButton::clicked, this, &MainWindow::on_btnExit_clicked);
+
     ui->comboDifficulty->addItem("Легкий", static_cast<int>(Difficulty::Easy));
     ui->comboDifficulty->addItem("Средний", static_cast<int>(Difficulty::Medium));
     ui->comboDifficulty->addItem("Сложный", static_cast<int>(Difficulty::Hard));
