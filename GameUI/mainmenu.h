@@ -15,6 +15,12 @@ public:
     explicit MainMenu(QWidget *parent = nullptr);
     ~MainMenu();
 
+signals:
+    void singleplayerRequested();
+    void multiplayerRequested();
+    void settingsRequested();
+    void exitRequested();
+
 private:
     Ui::MainMenu *ui;
 };

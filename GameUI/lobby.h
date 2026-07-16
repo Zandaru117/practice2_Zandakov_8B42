@@ -15,6 +15,9 @@ public:
     explicit Lobby(QWidget *parent = nullptr);
     ~Lobby();
 
+signals:
+    void backToMenuRequested();
+
 private:
     Ui::Lobby *ui;
 };

@@ -8,7 +8,6 @@ Lobby::Lobby(QWidget *parent) :
     ui->setupUi(this);
 }
 
-Lobby::~Lobby()
-{
+Lobby::~Lobby() {
     delete ui;
 }
