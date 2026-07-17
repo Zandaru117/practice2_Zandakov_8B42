@@ -18,6 +18,9 @@ public:
 signals:
     void backToMenuRequested();
 
+private slots:
+    void onBackClicked();
+
 private:
     Ui::Lobby *ui;
 };

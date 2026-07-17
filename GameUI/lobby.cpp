@@ -6,8 +6,14 @@ Lobby::Lobby(QWidget *parent) :
     ui(new Ui::Lobby)
 {
     ui->setupUi(this);
+
+    connect(ui->btnBackLobby, &QPushButton::clicked, this, &Lobby::onBackClicked);
 }
 
 Lobby::~Lobby() {
     delete ui;
+}
+
+void Lobby::onBackClicked() {
+    emit backToMenuRequested();
 }
