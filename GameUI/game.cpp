@@ -4,7 +4,11 @@
 
 Game::Game(QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::Game)
+    ui(new Ui::Game),
+    tcpSocket(nullptr),
+    isNetworkMode(false),
+    isMyTurn(true),
+    mySign(Cell::X)
 {
     ui->setupUi(this);
     setupGridConnections();
@@ -16,6 +20,20 @@ Game::~Game() {
 }
 
 void Game::startNewGame() {
+    isNetworkMode = false;
+    game.reset();
+    updateUI();
+}
+
+void Game::startNetworkGame(QTcpSocket* socket, bool isHost) {
+    tcpSocket = socket;
+    isNetworkMode = true;
+    isMyTurn = isHost;
+    mySign = isHost ? Cell::X : Cell::O;
+
+    connect(tcpSocket, &QTcpSocket::readyRead, this, &Game::onReadyRead);
+    connect(tcpSocket, &QTcpSocket::disconnected, this, &Game::onDisconnected);
+
     game.reset();
     updateUI();
 }
@@ -39,6 +57,8 @@ void Game::setupGridConnections() {
 }
 
 void Game::onGridButtonClicked() {
+    if (isNetworkMode && !isMyTurn) return;
+
     QPushButton *clickedButton = qobject_cast<QPushButton*>(sender());
     if (!clickedButton) return;
 
@@ -47,11 +67,42 @@ void Game::onGridButtonClicked() {
 
     if (game.makeMove(row, col)) {
         updateUI();
-        if (game.getState() == GameState::Progress) {
-            game.makeBotMove();
+
+        if (isNetworkMode) {
+            QString moveStr = QString("%1 %2\n").arg(row).arg(col);
+            tcpSocket->write(moveStr.toUtf8());
+            isMyTurn = false;
             updateUI();
+        } else {
+            if (game.getState() == GameState::Progress) {
+                game.makeBotMove();
+                updateUI();
+            }
         }
     }
+}
+
+void Game::onReadyRead() {
+    if (!tcpSocket) return;
+
+    while (tcpSocket->canReadLine()) {
+        QByteArray line = tcpSocket->readLine().trimmed();
+        QList<QByteArray> tokens = line.split(' ');
+        if (tokens.size() == 2) {
+            int row = tokens[0].toInt();
+            int col = tokens[1].toInt();
+
+            if (game.makeMove(row, col)) {
+                isMyTurn = true;
+                updateUI();
+            }
+        }
+    }
+}
+
+void Game::onDisconnected() {
+    QMessageBox::warning(this, "Сеть", "Соперник отключился от игры.");
+    onBackClicked();
 }
 
 void Game::updateUI() {
@@ -70,20 +121,32 @@ void Game::updateUI() {
 
     GameState state = game.getState();
     if (state == GameState::Progress) {
-        if (game.getCurrentPlayer() == Cell::X) {
-            ui->statusLabel->setText("Ваш ход (X)");
+        if (isNetworkMode) {
+            ui->statusLabel->setText(isMyTurn ? "Ваш ход!" : "Ход соперника...");
         } else {
-            ui->statusLabel->setText("Ход компьютера (O)");
+            ui->statusLabel->setText(game.getCurrentPlayer() == Cell::X ? "Ваш ход (X)" : "Ход компьютера (O)");
         }
     } else {
-        if (state == GameState::WinX) QMessageBox::information(this, "Финал", "Вы выиграли!");
-        else if (state == GameState::WinO) QMessageBox::critical(this, "Финал", "Компьютер выиграл!");
-        else if (state == GameState::Draw) QMessageBox::information(this, "Финал", "Ничья!");
+        if (state == GameState::WinX) {
+            QMessageBox::information(this, "Финал", isNetworkMode ? (mySign == Cell::X ? "Вы победили!" : "Победил соперник (X)!") : "Вы выиграли!");
+        } else if (state == GameState::WinO) {
+            QMessageBox::critical(this, "Финал", isNetworkMode ? (mySign == Cell::O ? "Вы победили!" : "Победил соперник (O)!") : "Компьютер выиграл!");
+        } else if (state == GameState::Draw) {
+            QMessageBox::information(this, "Финал", "Ничья!");
+        }
 
+        if (tcpSocket) {
+            tcpSocket->disconnectFromHost();
+            tcpSocket = nullptr;
+        }
         emit backToMenuRequested();
     }
 }
 
 void Game::onBackClicked() {
+    if (tcpSocket) {
+        tcpSocket->disconnectFromHost();
+        tcpSocket = nullptr;
+    }
     emit backToMenuRequested();
 }

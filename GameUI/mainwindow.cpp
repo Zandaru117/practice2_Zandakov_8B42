@@ -54,6 +54,11 @@ MainWindow::MainWindow(QWidget *parent)
         ui->stackedWidget->setCurrentIndex(0);
     });
 
+    connect(lobbyWidget, &Lobby::networkGameStarted, this, [this](QTcpSocket* socket, bool isHost) {
+        gameWidget->startNetworkGame(socket, isHost);
+        ui->stackedWidget->setCurrentWidget(gameWidget);
+    });
+
     connect(settingsWidget, &Settings::difficultyChanged, gameWidget, &Game::setDifficulty);
 }
 
