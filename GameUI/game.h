@@ -30,6 +30,7 @@ private slots:
     void onBackClicked();
     void onReadyRead();
     void onDisconnected();
+    void onRestartClicked();
 
 private:
     Ui::Game *ui;
@@ -42,6 +43,7 @@ private:
 
     void setupGridConnections();
     void updateUI();
+    void showFinalMessage(GameState state);
 };
 
 #endif // GAME_H

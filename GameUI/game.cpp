@@ -13,6 +13,9 @@ Game::Game(QWidget *parent) :
     ui->setupUi(this);
     setupGridConnections();
     connect(ui->btnBackGame, &QPushButton::clicked, this, &Game::onBackClicked);
+
+    connect(ui->btnRestart, &QPushButton::clicked, this, &Game::onRestartClicked);
+    ui->btnRestart->hide();
 }
 
 Game::~Game() {
@@ -68,6 +71,11 @@ void Game::onGridButtonClicked() {
     if (game.makeMove(row, col)) {
         updateUI();
 
+        GameState state = game.getState();
+        if (state != GameState::Progress) {
+            showFinalMessage(state);
+        }
+
         if (isNetworkMode) {
             QString moveStr = QString("%1 %2\n").arg(row).arg(col);
             tcpSocket->write(moveStr.toUtf8());
@@ -77,6 +85,10 @@ void Game::onGridButtonClicked() {
             if (game.getState() == GameState::Progress) {
                 game.makeBotMove();
                 updateUI();
+
+                if (game.getState() != GameState::Progress) {
+                    showFinalMessage(game.getState());
+                }
             }
         }
     }
@@ -87,6 +99,15 @@ void Game::onReadyRead() {
 
     while (tcpSocket->canReadLine()) {
         QByteArray line = tcpSocket->readLine().trimmed();
+
+        if (line == "RESTART") {
+            game.reset();
+            isMyTurn = (mySign == Cell::X);
+            ui->btnRestart->hide();
+            updateUI();
+            continue;
+        }
+
         QList<QByteArray> tokens = line.split(' ');
         if (tokens.size() == 2) {
             int row = tokens[0].toInt();
@@ -95,14 +116,26 @@ void Game::onReadyRead() {
             if (game.makeMove(row, col)) {
                 isMyTurn = true;
                 updateUI();
+
+                if (game.getState() != GameState::Progress) {
+                    showFinalMessage(game.getState());
+                }
             }
         }
     }
 }
 
 void Game::onDisconnected() {
-    QMessageBox::warning(this, "Сеть", "Соперник отключился от игры.");
-    onBackClicked();
+    if (game.getState() != GameState::Progress) {
+        ui->statusLabel->setText("Соперник вышел в меню.");
+        if (tcpSocket) {
+            tcpSocket->deleteLater();
+            tcpSocket = nullptr;
+        }
+    } else {
+        QMessageBox::warning(this, "Сеть", "Соперник отключился от игры.");
+        onBackClicked();
+    }
 }
 
 void Game::updateUI() {
@@ -121,25 +154,24 @@ void Game::updateUI() {
 
     GameState state = game.getState();
     if (state == GameState::Progress) {
+        ui->btnRestart->hide();
         if (isNetworkMode) {
             ui->statusLabel->setText(isMyTurn ? "Ваш ход!" : "Ход соперника...");
         } else {
             ui->statusLabel->setText(game.getCurrentPlayer() == Cell::X ? "Ваш ход (X)" : "Ход компьютера (O)");
         }
     } else {
+
+        ui->btnRestart->show();
+
         if (state == GameState::WinX) {
-            QMessageBox::information(this, "Финал", isNetworkMode ? (mySign == Cell::X ? "Вы победили!" : "Победил соперник (X)!") : "Вы выиграли!");
+            ui->statusLabel->setText(isNetworkMode ? (mySign == Cell::X ? "Вы победили!" : "Победил соперник (X)!") : "Вы выиграли!");
         } else if (state == GameState::WinO) {
-            QMessageBox::critical(this, "Финал", isNetworkMode ? (mySign == Cell::O ? "Вы победили!" : "Победил соперник (O)!") : "Компьютер выиграл!");
+            ui->statusLabel->setText(isNetworkMode ? (mySign == Cell::O ? "Вы победили!" : "Победил соперник (O)!") : "Компьютер выиграл!");
         } else if (state == GameState::Draw) {
-            QMessageBox::information(this, "Финал", "Ничья!");
+            ui->statusLabel->setText("Ничья!");
         }
 
-        if (tcpSocket) {
-            tcpSocket->disconnectFromHost();
-            tcpSocket = nullptr;
-        }
-        emit backToMenuRequested();
     }
 }
 
@@ -149,4 +181,29 @@ void Game::onBackClicked() {
         tcpSocket = nullptr;
     }
     emit backToMenuRequested();
+}
+
+void Game::onRestartClicked() {
+    game.reset();
+
+    if (isNetworkMode && tcpSocket) {
+        tcpSocket->write("RESTART\n");
+        isMyTurn = (mySign == Cell::X);
+    } else {
+        isMyTurn = true;
+    }
+
+    ui->btnRestart->hide();
+    updateUI();
+}
+
+
+void Game::showFinalMessage(GameState state) {
+    if (state == GameState::WinX) {
+        QMessageBox::information(this, "Финал", isNetworkMode ? (mySign == Cell::X ? "Вы победили!" : "Победил соперник (X)!") : "Вы выиграли!");
+    } else if (state == GameState::WinO) {
+        QMessageBox::critical(this, "Финал", isNetworkMode ? (mySign == Cell::O ? "Вы победили!" : "Победил соперник (O)!") : "Компьютер выиграл!");
+    } else if (state == GameState::Draw) {
+        QMessageBox::information(this, "Финал", "Ничья!");
+    }
 }
