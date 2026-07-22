@@ -16,6 +16,9 @@ Game::Game(QWidget *parent) :
 
     connect(ui->btnRestart, &QPushButton::clicked, this, &Game::onRestartClicked);
     ui->btnRestart->hide();
+
+    connect(ui->btnSendChat, &QPushButton::clicked, this, &Game::onSendChatClicked);
+    connect(ui->chatInput, &QLineEdit::returnPressed, this, &Game::onSendChatClicked);
 }
 
 Game::~Game() {
@@ -36,6 +39,9 @@ void Game::startNetworkGame(QTcpSocket* socket, bool isHost) {
 
     connect(tcpSocket, &QTcpSocket::readyRead, this, &Game::onReadyRead);
     connect(tcpSocket, &QTcpSocket::disconnected, this, &Game::onDisconnected);
+
+    ui->chatDisplay->clear();
+    ui->chatDisplay->append("<i>Система: Соединение установлено. Вы можете общаться!</i>");
 
     game.reset();
     updateUI();
@@ -105,6 +111,12 @@ void Game::onReadyRead() {
             isMyTurn = (mySign == Cell::X);
             ui->btnRestart->hide();
             updateUI();
+            continue;
+        }
+
+        if (line.startsWith("CHAT")) {
+            QString message = QString::fromUtf8(line.mid(4));
+            ui->chatDisplay->append(QString("<b>Соперник:</b> %1").arg(message));
             continue;
         }
 
@@ -206,4 +218,21 @@ void Game::showFinalMessage(GameState state) {
     } else if (state == GameState::Draw) {
         QMessageBox::information(this, "Финал", "Ничья!");
     }
+}
+
+
+void Game::onSendChatClicked() {
+    QString text = ui->chatInput->text().trimmed();
+    if (text.isEmpty()) return;
+
+    if (isNetworkMode && tcpSocket) {
+        QString packet = QString("CHAT%1\n").arg(text);
+        tcpSocket->write(packet.toUtf8());
+
+        ui->chatDisplay->append(QString("<b>Вы:</b> %1").arg(text));
+    } else {
+        ui->chatDisplay->append("<i>Система: Чат доступен только в сетевой игре</i>");
+    }
+
+    ui->chatInput->clear();
 }

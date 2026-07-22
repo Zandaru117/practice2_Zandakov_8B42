@@ -31,6 +31,7 @@ private slots:
     void onReadyRead();
     void onDisconnected();
     void onRestartClicked();
+    void onSendChatClicked();
 
 private:
     Ui::Game *ui;
