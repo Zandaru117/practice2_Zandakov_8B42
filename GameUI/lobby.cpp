@@ -7,7 +7,8 @@ Lobby::Lobby(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::Lobby),
     tcpServer(nullptr),
-    tcpSocket(nullptr)
+    tcpSocket(nullptr),
+    activeSocket(nullptr)
 {
     ui->setupUi(this);
 
@@ -22,6 +23,8 @@ Lobby::Lobby(QWidget *parent) :
 Lobby::~Lobby() {
     if (tcpServer) tcpServer->close();
     if (tcpSocket) tcpSocket->close();
+    if (activeSocket) activeSocket->close();
+    qDeleteAll(waitingQueue);
     delete ui;
 }
 
@@ -52,12 +55,55 @@ void Lobby::onCreateRoomClicked() {
 }
 
 void Lobby::onNewConnection() {
-    tcpSocket = tcpServer->nextPendingConnection();
-    tcpServer->close();
+    while (tcpServer->hasPendingConnections()) {
+        QTcpSocket* newClient = tcpServer->nextPendingConnection();
+        waitingQueue.append(newClient);
 
-    ui->lblHostStatus->setText("Соперник подключился!");
+        connect(newClient, &QTcpSocket::disconnected, this, [this, newClient]() {
 
-    emit networkGameStarted(tcpSocket, true);
+            if (activeSocket == newClient) {
+                onActiveMatchFinished();
+            } else {
+
+                waitingQueue.removeAll(newClient);
+                newClient->deleteLater();
+            }
+        });
+
+        if (activeSocket != nullptr || waitingQueue.size() > 1) {
+            QString waitMsg = QString("WAIT %1\n").arg(waitingQueue.size());
+            newClient->write(waitMsg.toUtf8());
+            newClient->flush();
+        }
+    }
+
+    if (activeSocket == nullptr && !waitingQueue.isEmpty()) {
+        startNextMatch();
+    }
+}
+
+void Lobby::startNextMatch() {
+    if (waitingQueue.isEmpty()) {
+        activeSocket = nullptr;
+        ui->lblHostStatus->setText("Очередь пуста. Ожидание игроков...");
+        return;
+    }
+
+    activeSocket = waitingQueue.takeFirst();
+    ui->lblHostStatus->setText("Соперник подключился из очереди!");
+
+    activeSocket->write("START\n");
+    activeSocket->flush();
+
+    emit networkGameStarted(activeSocket, true);
+}
+
+void Lobby::onActiveMatchFinished() {
+    activeSocket = nullptr;
+
+    emit opponentDisconnected();
+
+    startNextMatch();
 }
 
 void Lobby::onConnectClicked() {
@@ -70,6 +116,7 @@ void Lobby::onConnectClicked() {
     if (!tcpSocket) {
         tcpSocket = new QTcpSocket(this);
         connect(tcpSocket, &QTcpSocket::connected, this, &Lobby::onConnected);
+        connect(tcpSocket, &QTcpSocket::readyRead, this, &Lobby::onClientReadyRead);
         connect(tcpSocket, &QAbstractSocket::errorOccurred, this, [this](QAbstractSocket::SocketError) {
             ui->lblClientStatus->setText("Ошибка подключения");
             QMessageBox::critical(this, "Ошибка", "Не удалось подключиться: " + tcpSocket->errorString());
@@ -81,9 +128,7 @@ void Lobby::onConnectClicked() {
 }
 
 void Lobby::onConnected() {
-    ui->lblClientStatus->setText("Успешно подключено!");
-
-    emit networkGameStarted(tcpSocket, false);
+    ui->lblClientStatus->setText("Успешно подключено! Ожидание очереди...");
 }
 
 void Lobby::onErrorOccurred(QAbstractSocket::SocketError) {
@@ -100,4 +145,26 @@ void Lobby::onBackClicked() {
     ui->lblHostStatus->setText("Ожидание подключения...");
     ui->lblClientStatus->setText("Подключение");
     emit backToMenuRequested();
+}
+
+void Lobby::onClientReadyRead() {
+    if (!tcpSocket) return;
+
+    while (tcpSocket->canReadLine()) {
+        QByteArray line = tcpSocket->readLine().trimmed();
+
+        if (line.startsWith("WAIT")) {
+            QList<QByteArray> tokens = line.split(' ');
+            QString pos = (tokens.size() > 1) ? tokens[1] : "1";
+            ui->lblClientStatus->setText(QString("Комната занята. Вы в очереди (Позиция: %1)...").arg(pos));
+        }
+
+        if (line == "START") {
+            ui->lblClientStatus->setText("Ваша очередь подошла! Запуск матча...");
+
+            disconnect(tcpSocket, &QTcpSocket::readyRead, this, &Lobby::onClientReadyRead);
+
+            emit networkGameStarted(tcpSocket, false);
+        }
+    }
 }

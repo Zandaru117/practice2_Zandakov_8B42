@@ -22,14 +22,17 @@ public:
 
     void startNetworkGame(QTcpSocket* socket, bool isHost);
 
+public slots:
+    void onDisconnected();
+
 signals:
     void backToMenuRequested();
+    void opponentDisconnected();
 
 private slots:
     void onGridButtonClicked();
     void onBackClicked();
     void onReadyRead();
-    void onDisconnected();
     void onRestartClicked();
     void onSendChatClicked();
 
@@ -40,7 +43,7 @@ private:
     QTcpSocket* tcpSocket;
     bool isNetworkMode;
     bool isMyTurn;
-    Cell mySign;               // X для хоста, O для клиента
+    Cell mySign;
 
     void setupGridConnections();
     void updateUI();

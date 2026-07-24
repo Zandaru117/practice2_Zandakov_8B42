@@ -38,7 +38,6 @@ void Game::startNetworkGame(QTcpSocket* socket, bool isHost) {
     mySign = isHost ? Cell::X : Cell::O;
 
     connect(tcpSocket, &QTcpSocket::readyRead, this, &Game::onReadyRead);
-    connect(tcpSocket, &QTcpSocket::disconnected, this, &Game::onDisconnected);
 
     ui->chatDisplay->clear();
     ui->chatDisplay->append("<i>Система: Соединение установлено. Вы можете общаться!</i>");
@@ -138,14 +137,16 @@ void Game::onReadyRead() {
 }
 
 void Game::onDisconnected() {
-    if (game.getState() != GameState::Progress) {
-        ui->statusLabel->setText("Соперник вышел в меню.");
-        if (tcpSocket) {
-            tcpSocket->deleteLater();
-            tcpSocket = nullptr;
-        }
+    tcpSocket = nullptr;
+
+    if (isNetworkMode && mySign == Cell::X) {
+        ui->statusLabel->setText("Соперник вышел. Ожидание игрока из очереди...");
+        ui->chatDisplay->append("<i>Система: Соперник покинул игру. Подключаем следующего игрока...</i>");
+
+        game.reset();
+        updateUI();
     } else {
-        QMessageBox::warning(this, "Сеть", "Соперник отключился от игры.");
+        QMessageBox::information(this, "Игра окончена", "Сессия закрыта сервером.");
         onBackClicked();
     }
 }

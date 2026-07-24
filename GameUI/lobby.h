@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QTcpServer>
 #include <QTcpSocket>
+#include <QList>
 
 namespace Ui {
 class Lobby;
@@ -20,6 +21,7 @@ public:
 signals:
     void backToMenuRequested();
     void networkGameStarted(QTcpSocket* socket, bool isHost);
+    void opponentDisconnected();
 
 private slots:
     void onBackClicked();
@@ -29,13 +31,19 @@ private slots:
     void onNewConnection();
     void onConnected();
     void onErrorOccurred(QAbstractSocket::SocketError socketError);
+    void onClientReadyRead();
+    void onActiveMatchFinished();
 
 private:
     Ui::Lobby *ui;
     QTcpServer *tcpServer;
-    QTcpSocket *tcpSocket;
+
+    QTcpSocket *tcpSocket;     
+    QTcpSocket *activeSocket;
+    QList<QTcpSocket*> waitingQueue;
 
     QString getLocalIP();
+    void startNextMatch();
 };
 
 #endif // LOBBY_H

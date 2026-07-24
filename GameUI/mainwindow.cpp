@@ -59,6 +59,8 @@ MainWindow::MainWindow(QWidget *parent)
         ui->stackedWidget->setCurrentWidget(gameWidget);
     });
 
+    connect(lobbyWidget, &Lobby::opponentDisconnected, gameWidget, &Game::onDisconnected);
+
     connect(settingsWidget, &Settings::difficultyChanged, gameWidget, &Game::setDifficulty);
 }
 
